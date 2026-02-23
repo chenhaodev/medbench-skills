@@ -17,7 +17,7 @@ export function createGeminiClient(): ApiClient {
     }: AnswerRequest): Promise<AnswerResponse> {
       const start = Date.now();
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: process.env.GEMINI_MODEL ?? "gemini-3.1-pro-preview",
         systemInstruction: systemPrompt,
         generationConfig: { temperature: temperature ?? 0.2 },
       });
