@@ -158,7 +158,7 @@ Exposes four tools for use in Claude Code:
 | `npm run run` | Run the daily inference pipeline (`pipeline/run.ts`) |
 | `npm run improve` | Run the strategy improvement loop (`pipeline/run-improve.ts`) |
 | `npm run mcp` | Start the MCP server (`mcp-server/index.ts`) |
-| `npm test` | Run all tests (75 tests across 10 files) |
+| `npm test` | Run all tests (82 tests across 11 files) |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run typecheck` | TypeScript type check (`tsc --noEmit`) |
 <!-- END AUTO-GENERATED -->
