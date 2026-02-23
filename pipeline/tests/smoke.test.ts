@@ -2,7 +2,7 @@
 // Integration smoke test — calls live APIs with ONE real MedBench question.
 // Skipped if API keys are absent.
 import "dotenv/config";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { getClient } from "../clients";
 
 // A real MCQ question from MedExam_V4 (LLM track)
@@ -81,9 +81,9 @@ describe("API smoke tests (live calls)", () => {
       console.log("  SKIP poe: POE_API_KEY not set");
       return;
     }
-    // Temporarily clear ANTHROPIC_API_KEY so getClient('claude') routes to Poe
-    const saved = process.env.ANTHROPIC_API_KEY;
-    process.env.ANTHROPIC_API_KEY = "";
+    // Temporarily clear ANTHROPIC_API_KEY so getClient('claude') routes to Poe.
+    // Use vi.stubEnv to avoid mutating process.env directly (safe restore even if key was absent).
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
     try {
       const client = getClient("claude");
       const res = await client.answer({
@@ -95,7 +95,7 @@ describe("API smoke tests (live calls)", () => {
       );
       expect(res.text.length).toBeGreaterThan(0);
     } finally {
-      process.env.ANTHROPIC_API_KEY = saved;
+      vi.unstubAllEnvs();
     }
   }, 60_000);
 });

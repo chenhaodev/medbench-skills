@@ -8,6 +8,9 @@ export function createPoeClient(): ApiClient {
   const key = process.env.POE_API_KEY;
   if (!key) throw new Error("POE_API_KEY not set");
 
+  // Resolve model once at factory time so it stays stable across all calls.
+  const model = process.env.POE_MODEL ?? "Claude-Opus-4.6";
+
   const client = new OpenAI({
     apiKey: key,
     baseURL: "https://api.poe.com/v1",
@@ -22,7 +25,6 @@ export function createPoeClient(): ApiClient {
       temperature,
     }: AnswerRequest): Promise<AnswerResponse> {
       const start = Date.now();
-      const model = process.env.POE_MODEL ?? "Claude-Opus-4.6";
 
       const userContent: OpenAI.Chat.ChatCompletionContentPart[] = imageBase64
         ? [
@@ -43,12 +45,15 @@ export function createPoeClient(): ApiClient {
           { role: "user", content: userContent },
         ],
         temperature: temperature ?? 0.1,
-        max_completion_tokens: 1024,
+        // Claude Opus 4.6 on Poe has extended thinking enabled by default;
+        // thinking budget alone requires >=1024 tokens, so set a larger cap.
+        max_completion_tokens: 8192,
       });
 
       return {
         text: response.choices[0]?.message?.content ?? "",
-        confidence: 0.88,
+        confidence: 0.88, // same as claude.ts — Poe proxies Claude, same model family
+
         tokensUsed: response.usage?.total_tokens ?? 0,
         latencyMs: Date.now() - start,
       };
