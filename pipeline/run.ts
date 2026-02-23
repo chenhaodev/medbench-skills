@@ -197,11 +197,18 @@ async function main() {
   await fs.mkdir(path.join(dir, "submit"), { recursive: true });
   await fs.mkdir(path.join(dir, "enriched"), { recursive: true });
 
-  const onlyTrack = process.env.ONLY_TRACK as
-    | "LLM"
-    | "Agent"
-    | "VLM"
-    | undefined;
+  const VALID_TRACKS = ["LLM", "Agent", "VLM"] as const;
+  const rawOnlyTrack = process.env.ONLY_TRACK;
+  if (
+    rawOnlyTrack !== undefined &&
+    !(VALID_TRACKS as readonly string[]).includes(rawOnlyTrack)
+  ) {
+    console.error(
+      `[ERROR] Invalid ONLY_TRACK="${rawOnlyTrack}". Valid values: ${VALID_TRACKS.join(", ")}`,
+    );
+    process.exit(1);
+  }
+  const onlyTrack = rawOnlyTrack as (typeof VALID_TRACKS)[number] | undefined;
   const tracks: Array<"LLM" | "Agent" | "VLM"> = onlyTrack
     ? [onlyTrack]
     : ["LLM", "Agent", "VLM"];
