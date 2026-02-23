@@ -150,11 +150,38 @@ Exposes four tools for use in Claude Code:
 
 ## Development
 
-```bash
-npm test          # run all tests (75 tests across 10 files)
-npm run typecheck # TypeScript type check
-```
+<!-- AUTO-GENERATED from package.json scripts -->
+| Command | Description |
+|---------|-------------|
+| `npm run run` | Run the daily inference pipeline (`pipeline/run.ts`) |
+| `npm run improve` | Run the strategy improvement loop (`pipeline/run-improve.ts`) |
+| `npm run mcp` | Start the MCP server (`mcp-server/index.ts`) |
+| `npm test` | Run all tests (75 tests across 10 files) |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run typecheck` | TypeScript type check (`tsc --noEmit`) |
+<!-- END AUTO-GENERATED -->
 
 Environment:
 - Node.js 24, TypeScript, Vitest
 - `dotenv/config` loaded in all entry points and tests
+
+## Environment Variables
+
+<!-- AUTO-GENERATED from .env.example -->
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `QWEN_API_KEY` | Yes | Qwen API key (inference + judge) | — |
+| `OPENAI_API_KEY` | Yes* | OpenAI API key (Agent track) | — |
+| `GEMINI_API_KEY` | Yes* | Gemini API key (Agent + VLM tracks) | — |
+| `ANTHROPIC_API_KEY` | Yes* | Anthropic API key (Agent track) | — |
+| `DEEPSEEK_API_KEY` | No | DeepSeek API key (reserved) | — |
+| `QWEN_MODEL` | No | Qwen model override | `qwen3-max` |
+| `OPENAI_MODEL` | No | OpenAI model override | `gpt-5.2` |
+| `GEMINI_MODEL` | No | Gemini model override | `gemini-3.1-pro-preview` |
+| `CLAUDE_MODEL` | No | Claude model override | `claude-opus-4-6` |
+| `MAX_DAILY_COST_USD` | No | Hard budget cap before pipeline aborts | `6` |
+| `PIPELINE_COST_USD` | No | Actual inference cost (auto-deducted from improve budget) | `4.30` |
+| `ONLY_TRACK` | No | Limit to one track: `LLM`, `Agent`, or `VLM` | all tracks |
+<!-- END AUTO-GENERATED -->
+
+\* Only required for the tracks that use that model (see Model Routing table).
