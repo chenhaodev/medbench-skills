@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "medbench": {
+      "command": "npx",
+      "args": ["tsx", "mcp-server/index.ts"],
+      "cwd": "/Users/chenhao/MyOpenCode/medbench-skills"
+    }
+  }
+}
