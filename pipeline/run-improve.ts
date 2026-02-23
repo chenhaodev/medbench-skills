@@ -100,7 +100,16 @@ async function main() {
 
   const allTaskEntries: TaskEntry[] = [];
 
-  for (const track of ["LLM", "Agent", "VLM"] as const) {
+  const onlyTrack = process.env.ONLY_TRACK as
+    | "LLM"
+    | "Agent"
+    | "VLM"
+    | undefined;
+  const tracks: Array<"LLM" | "Agent" | "VLM"> = onlyTrack
+    ? [onlyTrack]
+    : ["LLM", "Agent", "VLM"];
+
+  for (const track of tracks) {
     const allItems = await extractTrack(track);
     const grouped = groupBySource(allItems);
 

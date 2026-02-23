@@ -1,6 +1,6 @@
 # MedBench Skills
 
-An autonomous pipeline for [MedBench](https://medbench.org) — a Chinese medical AI benchmark. Runs daily cycles of model inference, ensemble confidence scoring, and self-improving prompt strategy evolution without human intervention.
+An autonomous pipeline for [MedBench](https://medbench.opencompass.org.cn) — a Chinese medical AI benchmark. Runs daily cycles of model inference, ensemble confidence scoring, and self-improving prompt strategy evolution without human intervention.
 
 ## Architecture
 
