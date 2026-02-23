@@ -6,7 +6,7 @@ import type { ModelKey } from "./router";
 
 // ─── Temperature Sampling ────────────────────────────────────────────────────
 
-export interface SampleResult {
+interface SampleResult {
   answer: string;
   confidence: number; // fraction of samples matching modal answer
   samples: string[]; // raw draws e.g. ['A','A','B','A','A']
@@ -58,7 +58,7 @@ export function computeConfidenceFromSamples(samples: string[]): SampleResult {
 
 // ─── Dawid-Skene EM ──────────────────────────────────────────────────────────
 
-export interface DawidskeenResult {
+interface DawidskeenResult {
   trueLabels: string[]; // MAP label per question
   labelProbs: Record<string, number>[]; // full probability dist per question
   modelAccuracy: Record<string, number>[]; // per-model accuracy per class (diagnostic)
@@ -165,7 +165,7 @@ export const MCQ_CLASSES = ["A", "B", "C", "D", "E"];
 
 const QUESTIONS_DIR = path.resolve("history/questions");
 
-export interface QuestionRecord {
+interface QuestionRecord {
   cycle: number;
   answer: string;
   confidence: number;
@@ -173,7 +173,7 @@ export interface QuestionRecord {
   pseudoCorrect: boolean | null; // set post-hoc via calibrateWithMedBenchScore; null until MedBench score arrives
 }
 
-export type QuestionHistory = Record<string, QuestionRecord[]>; // key = question id as string
+type QuestionHistory = Record<string, QuestionRecord[]>; // key = question id as string
 
 export async function loadQuestionHistory(
   taskSource: string,
@@ -219,7 +219,7 @@ export function computeStability(
 
 // ─── MedBench Score Calibration ──────────────────────────────────────────────
 
-export interface ConfidenceItem {
+interface ConfidenceItem {
   id: number;
   confidence: number;
   pseudoCorrect: boolean | null;
