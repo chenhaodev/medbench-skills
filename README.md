@@ -63,6 +63,14 @@ npx tsx pipeline/run.ts
 
 Submit `results/cycle_1/submit/*.jsonl` to the MedBench dashboard.
 
+**Run a single track only** (e.g. while testing Agent tasks):
+```bash
+ONLY_TRACK=Agent npx tsx pipeline/run.ts
+ONLY_TRACK=Agent npx tsx pipeline/run-improve.ts
+```
+
+Valid values: `LLM`, `Agent`, `VLM`. Omit to process all three tracks.
+
 ## Daily Cycle
 
 ```
