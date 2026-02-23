@@ -15,8 +15,18 @@ import {
   type EnrichedItem,
 } from "./output";
 import type { SubmitItem } from "./formatter";
+import {
+  temperatureSample,
+  dawidskeenEM,
+  getSecondaryModels,
+  MCQ_CLASSES,
+  saveQuestionRecord,
+} from "./ensemble";
 
 const MAX_COST = parseFloat(process.env.MAX_DAILY_COST_USD ?? "6");
+
+const ENSEMBLE_CONFIDENCE_THRESHOLD = 0.7; // below this → run secondary models
+const TEMP_SAMPLE_COUNT = 5; // draws per question for confidence estimate
 
 // Source names that map to MCQ task type (direct answer A/B/C/D/E)
 const MCQ_SOURCE_PREFIXES = new Set([
@@ -77,13 +87,64 @@ async function processTrack(
 
     for (const item of items) {
       const prompt = buildPrompt(item.question, strategy);
-      const response = await client.answer({
-        prompt,
-        systemPrompt: strategy.systemPrompt,
-        temperature: strategy.temperature,
-      });
-      const answer = extractAnswer(response.text, taskType);
 
+      // Temperature sampling → empirical confidence
+      const tempResult = await temperatureSample(
+        client,
+        prompt,
+        strategy.systemPrompt,
+        taskType,
+        TEMP_SAMPLE_COUNT,
+        0.7,
+      );
+
+      let finalAnswer = tempResult.answer;
+      let finalConfidence = tempResult.confidence;
+      let allModelAnswers: Record<string, string> | null = null;
+      let ensembleAnswer: string | null = null;
+      let tokensUsed = 0;
+
+      // Low-confidence: run secondary models + Dawid-Skene
+      if (
+        tempResult.confidence < ENSEMBLE_CONFIDENCE_THRESHOLD &&
+        taskType === "mcq"
+      ) {
+        const secondaryModels = getSecondaryModels(routeResult.model);
+        const secondaryAnswers: string[] = [];
+        for (const modelKey of secondaryModels) {
+          let secClient;
+          try {
+            secClient = getClient(modelKey);
+          } catch {
+            continue; // skip unavailable secondary
+          }
+          const secResp = await secClient.answer({
+            prompt,
+            systemPrompt: strategy.systemPrompt,
+          });
+          secondaryAnswers.push(extractAnswer(secResp.text, taskType));
+          tokensUsed += secResp.tokensUsed;
+        }
+
+        const votes = [tempResult.answer, ...secondaryAnswers];
+        allModelAnswers = Object.fromEntries(
+          [
+            routeResult.model,
+            ...secondaryModels.slice(0, secondaryAnswers.length),
+          ].map((m, i) => [m, votes[i]]),
+        );
+
+        if (votes.length > 1) {
+          const dsResult = dawidskeenEM([votes], MCQ_CLASSES);
+          ensembleAnswer = dsResult.trueLabels[0] ?? tempResult.answer;
+          finalAnswer = ensembleAnswer;
+          finalConfidence =
+            dsResult.labelProbs[0][ensembleAnswer] ?? tempResult.confidence;
+        }
+      }
+
+      const answer =
+        finalAnswer || extractAnswer(tempResult.samples[0] ?? "", taskType);
       const submitItem = validateSubmitItem({
         question: item.question,
         answer,
@@ -91,28 +152,36 @@ async function processTrack(
       });
       submitItems.push(submitItem);
 
+      // REQUIRED: persist question record so run-improve.ts can read history next cycle
+      await saveQuestionRecord(item.other.source, item.other.id, {
+        cycle,
+        answer,
+        confidence: finalConfidence,
+        ensembleAnswer,
+        pseudoCorrect: null, // set post-hoc by run-improve.ts after MedBench score arrives
+      });
+
       enrichedItems.push({
         id: item.other.id,
         source: item.other.source,
         answer,
-        confidence: response.confidence,
+        confidence: finalConfidence,
         model: routeResult.model,
         strategy: strategy.hash,
         strategyHash: strategy.hash,
         judgeScore: null,
-        tokensUsed: response.tokensUsed,
-        latencyMs: response.latencyMs,
+        tokensUsed,
+        latencyMs: 0,
         cycle,
-        // Ensemble fields — populated in Task 10 (ensemble module)
-        ensembleAnswer: null,
-        allModelAnswers: null,
-        temperatureSamples: null,
+        ensembleAnswer,
+        allModelAnswers,
+        temperatureSamples: tempResult.samples,
         answerStability: 1.0,
         pseudoCorrect: null,
       });
 
       // Blended cost estimate: $0.002 per 1K tokens
-      costUsd += (response.tokensUsed / 1000) * 0.002;
+      costUsd += (tokensUsed / 1000) * 0.002;
     }
   }
 
