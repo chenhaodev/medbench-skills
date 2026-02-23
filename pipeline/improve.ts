@@ -26,7 +26,7 @@ const JUDGE_OVERHEAD = 2.0; // judge doubles total token cost per question
 
 export function estimateImproveCostUsd(
   track: Track,
-  nQuestions: number
+  nQuestions: number,
 ): number {
   const modelCostMap: Record<Track, ModelKey> = {
     LLM: "qwen",
@@ -51,13 +51,30 @@ export function shouldDeploy(p: {
   return p.newScore - p.currentScore > IMPROVEMENT_THRESHOLD;
 }
 
+const STRATEGIES_DIR = path.resolve("history/strategies");
+const ARCHIVE_DIR = path.join(STRATEGIES_DIR, "archive");
+
+// Copy current strategy to archive/{taskName}/{hash}__{date}.json before overwriting.
+export async function archiveStrategy(
+  taskName: string,
+  strategy: Strategy,
+  _archiveDir = ARCHIVE_DIR,
+): Promise<string> {
+  const date = new Date().toISOString().split("T")[0];
+  const dir = path.join(_archiveDir, taskName);
+  await fs.mkdir(dir, { recursive: true });
+  const dest = path.join(dir, `${strategy.hash}__${date}.json`);
+  await fs.writeFile(dest, JSON.stringify(strategy, null, 2), "utf-8");
+  return dest;
+}
+
 export function hashStrategy(
-  s: Pick<Strategy, "systemPrompt" | "fewShots" | "temperature">
+  s: Pick<Strategy, "systemPrompt" | "fewShots" | "temperature">,
 ): string {
   return crypto
     .createHash("sha256")
     .update(
-      JSON.stringify({ s: s.systemPrompt, f: s.fewShots, t: s.temperature })
+      JSON.stringify({ s: s.systemPrompt, f: s.fewShots, t: s.temperature }),
     )
     .digest("hex")
     .slice(0, 6);
@@ -67,7 +84,7 @@ async function evaluateStrategy(
   strategy: Strategy,
   items: QuestionItem[],
   model: ModelKey,
-  taskType: "mcq" | "open"
+  taskType: "mcq" | "open",
 ): Promise<{ score: number; actualCostUsd: number }> {
   const client = getClient(model);
   const scores: number[] = [];
@@ -156,11 +173,11 @@ export async function evolveStrategy(params: {
       v,
       allItems,
       modelKey,
-      taskType
+      taskType,
     );
     totalCostUsd += actualCostUsd;
     console.log(
-      `  [${taskName}] variant ${v.hash}: ${score.toFixed(3)} (current: ${currentScore.toFixed(3)})`
+      `  [${taskName}] variant ${v.hash}: ${score.toFixed(3)} (current: ${currentScore.toFixed(3)})`,
     );
     if (shouldDeploy({ currentScore: bestScore, newScore: score })) {
       bestScore = score;
@@ -169,12 +186,16 @@ export async function evolveStrategy(params: {
   }
 
   if (best) {
+    // Archive the current strategy before overwriting so it can be rolled back
+    await archiveStrategy(taskName, current);
     await fs.writeFile(
       path.resolve(`history/strategies/${taskName}.json`),
       JSON.stringify(best, null, 2),
-      "utf-8"
+      "utf-8",
     );
-    console.log(`  [${taskName}] ✓ Deployed ${best.hash} (${bestScore.toFixed(3)})`);
+    console.log(
+      `  [${taskName}] ✓ Deployed ${best.hash} (${bestScore.toFixed(3)})`,
+    );
     return {
       deployed: true,
       newHash: best.hash,
